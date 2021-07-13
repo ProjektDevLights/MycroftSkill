@@ -5,7 +5,7 @@ Controls your devlights
 
 
 ## Examples
-* "Light devlight"
+* "Light"
 * "Light"
 * "Devlight"
 
@@ -18,7 +18,6 @@ Productivity
 Daily
 
 ## Tags
-#Light devlight smarthome iot
 #Light
 #Devlight
 #Smarthome
