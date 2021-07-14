@@ -1,4 +1,5 @@
 import json
+import re
 from os import nice, path
 
 import requests
@@ -46,7 +47,6 @@ class Devlight(MycroftSkill):
         text = message.data.get("utterance").lower()
         pattern = message.data.get("pattern")
         color = self.getValidColor(message.data.get("color"))
-        self.log.info(color)
         name = next((name for name in self.light_names if name in text), None)
         if not name:
             name = self.promptName()
@@ -54,7 +54,6 @@ class Devlight(MycroftSkill):
             pattern = self.promptPattern()
         pattern = self.getValidPattern(pattern)
         colors = None
-        timeout = None
         if pattern in ["plain", "runner"]:
             if not color:
                 colors = self.promptColors(1)
@@ -62,8 +61,15 @@ class Devlight(MycroftSkill):
                 colors = [color]
         if pattern == "gradient":
             colors = self.promptColors(2)
+        timeout = None
+        try:
+            timeout = int(re.search(r"\d+", text).group(0))
+        except:
+            pass
         if pattern in ["runner", "fading", "rainbow"]:
-            timeout = self.promptTimeout()
+            if not (timeout and int(timeout) > 1 and int(timeout) < 10000):
+                if pattern in ["runner", "fading", "rainbow"]:
+                    timeout = self.promptTimeout()
         self.lightPattern(name, pattern, colors=colors, timeout=timeout)
 
     def promptName(self):
@@ -152,7 +158,7 @@ class Devlight(MycroftSkill):
                            "/color", headers=self.headers, data=json.dumps(data))
         self.write("log.json", json.dumps(r.json()))
         message = r.json()["message"]
-        if not "quiet" in kw or kw["quiet"]:
+        if (not "quiet" in kw) or not kw["quiet"] == True:
             if r.status_code == 304:
                 self.speak_dialog('color.304.name',
                                   {"name": name})
@@ -160,8 +166,13 @@ class Devlight(MycroftSkill):
                 self.speak_dialog('color.name',
                                   {"name": name, "pattern": pattern})
             if r.status_code >= 400:
-                self.speak_dialog(message if isinstance(
-                    message, str) else message[0])
+                if "off" in message.lower():
+                    self.lightPower(name, "on", True)
+                    self.lightPattern(name, pattern, timeout=kw["timeout"] if "timeout" in kw else None, colors=kw["colors"] if "colors" in kw else [
+                    ], quiet=kw["quiet"] if "quiet" in kw else None)
+                else:
+                    self.speak_dialog(message if isinstance(
+                        message, str) else message[0])
 
     def getValidColor(self, color):
         if not color:
